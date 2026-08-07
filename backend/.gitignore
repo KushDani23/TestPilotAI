@@ -1,0 +1,22 @@
+# ── Maven / Java ─────────────────────────────────
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# ── IDE Files ────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+*.suo
+*.user
+
+# ── Environment / Secrets ────────────────────────
+# Do NOT commit API keys
+*.env
+.env.local
+
+# ── OS ───────────────────────────────────────────
+.DS_Store
+Thumbs.db

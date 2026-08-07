@@ -1,0 +1,11 @@
+# ── Node / npm ───────────────────────────────────
+node_modules/
+dist/
+
+# ── Vite Build Output ─────────────────────────────
+dist-ssr/
+*.local
+
+# ── OS ───────────────────────────────────────────
+.DS_Store
+Thumbs.db
