@@ -1,5 +1,6 @@
 package com.testpilot.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
 
 /**
@@ -16,6 +17,7 @@ import java.util.List;
  * Jackson (the JSON library) automatically converts this Java object
  * into JSON when Spring Boot returns it from a controller method.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class TestCaseResponse {
 
     private String summary;

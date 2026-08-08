@@ -1,5 +1,7 @@
 package com.testpilot.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 /**
  * TestCase DTO
  *
@@ -12,6 +14,7 @@ package com.testpilot.dto;
  *                   Typed as Object so Jackson can deserialize it from either a JSON
  *                   object ({"field":"value"}) or null from the AI response.
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class TestCase {
 
     private String title;

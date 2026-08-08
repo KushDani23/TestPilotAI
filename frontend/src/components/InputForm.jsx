@@ -1,6 +1,25 @@
 import React, { useState } from 'react'
 import './InputForm.css'
 
+// ── Validates the user's input before sending to backend ─────────────────────
+function validateInput(method, endpoint, description, requestBody) {
+  // Endpoint must start with / and have at least one more character
+  const endpointOk = /^\/[a-zA-Z0-9\-_\/{}:?=&%.]+$/.test(endpoint.trim())
+  if (!endpointOk) return false
+
+  // Description must have at least 5 alphanumeric characters
+  const alphaCount = (description.match(/[a-zA-Z0-9]/g) || []).length
+  if (alphaCount < 5) return false
+
+  // If a request body is provided it must be valid JSON
+  // (GET/DELETE often have no body — that's fine)
+  if (requestBody && requestBody.trim()) {
+    try { JSON.parse(requestBody.trim()) } catch { return false }
+  }
+
+  return true
+}
+
 /**
  * InputForm — Postman-inspired API input panel
  *
@@ -16,6 +35,7 @@ import './InputForm.css'
  *   isLoading           disables the form while waiting
  */
 function InputForm({ onSubmit, isLoading }) {
+  const [showPopup, setShowPopup] = useState(false)
   const [method, setMethod]           = useState('POST')
   const [endpoint, setEndpoint]       = useState('')
   const [description, setDescription] = useState('')
@@ -37,12 +57,9 @@ function InputForm({ onSubmit, isLoading }) {
     e.preventDefault()
     setFormError('')
 
-    if (!endpoint.trim()) {
-      setFormError('Endpoint is required (e.g., /api/users)')
-      return
-    }
-    if (!description.trim()) {
-      setFormError('Description is required')
+    // Run validation — show popup and stop if anything is wrong
+    if (!validateInput(method, endpoint, description, requestBody)) {
+      setShowPopup(true)
       return
     }
 
@@ -56,6 +73,29 @@ function InputForm({ onSubmit, isLoading }) {
 
   return (
     <div className="postman-panel">
+
+      {/* ── Validation Popup ─────────────────────────────────── */}
+      {showPopup && (
+        <div className="popup-overlay" role="alertdialog" aria-modal="true" aria-label="Validation error">
+          <div className="popup-box">
+            <div className="popup-icon" aria-hidden="true">⚠</div>
+            <p className="popup-message">Please enter valid input</p>
+            <ul className="popup-hints">
+              <li>Endpoint must start with <code>/</code> (e.g. <code>/api/users</code>)</li>
+              <li>Description must be at least 5 characters</li>
+              <li>Request body (if provided) must be valid JSON</li>
+            </ul>
+            <button
+              id="popup-ok-btn"
+              className="popup-ok-btn"
+              onClick={() => setShowPopup(false)}
+              autoFocus
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── URL Bar ───────────────────────────────────────────── */}
       <form onSubmit={handleSubmit} noValidate>

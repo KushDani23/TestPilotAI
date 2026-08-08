@@ -1,146 +1,180 @@
 package com.testpilot.service;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.testpilot.dto.ApiRequest;
 import com.testpilot.dto.TestCaseResponse;
 import com.testpilot.exception.GeminiException;
 import org.springframework.stereotype.Service;
 
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
 /**
  * TestCaseService
  *
- * This is the main business logic layer.
- * It sits between the Controller and the GeminiService.
- *
- * Responsibilities:
- * 1. Build the prompt using the user's API details
- * 2. Call GeminiService to get the AI-generated response
- * 3. Parse the JSON response into a TestCaseResponse DTO
- * 4. Return the structured DTO to the Controller
- *
- * The Controller doesn't know anything about Gemini or JSON parsing —
- * that's all handled here. This is the "Service Layer" in layered architecture.
+ * Business logic layer: builds the Groq prompt, calls GeminiService,
+ * and parses the AI response into a TestCaseResponse DTO.
  */
 @Service
 public class TestCaseService {
 
     private final GeminiService geminiService;
+
+    // Lenient ObjectMapper — ignores unknown fields so new AI output fields
+    // never break parsing, and doesn't fail on nulls or empty values.
     private final ObjectMapper objectMapper;
 
-    // Spring automatically injects GeminiService via constructor injection
     public TestCaseService(GeminiService geminiService) {
         this.geminiService = geminiService;
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+            .configure(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES, false)
+            .configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
     }
 
     /**
-     * Orchestrates the full test case generation process.
-     *
-     * @param request - DTO containing method, endpoint, description, requestBody
-     * @return TestCaseResponse DTO containing all generated test cases
+     * Main entry point — orchestrates prompt → AI call → parse → return.
      */
     public TestCaseResponse generateTestCases(ApiRequest request) {
-        // Step 1: Build the prompt
-        String prompt = buildPrompt(request);
-
-        // Step 2: Send prompt to Gemini and get the raw text back
+        String prompt      = buildPrompt(request);
         String rawResponse = geminiService.generateContent(prompt);
-
-        // Step 3: Parse the raw JSON text into our DTO
-        return parseGeminiResponse(rawResponse);
+        return parseResponse(rawResponse);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Prompt Builder
+    // ─────────────────────────────────────────────────────────────────────────
+
     /**
-     * Builds the prompt to send to Gemini.
+     * Builds the structured Groq prompt.
      *
-     * The prompt follows the role-based instruction pattern:
-     * - We tell Gemini to act as a Senior QA Engineer
-     * - We inject the user's API details
-     * - We tell it exactly what format to return (JSON)
-     *
-     * This is "prompt engineering" — structuring the prompt to get reliable output.
+     * Key design decisions:
+     * - requestBody inside each test case is a JSON OBJECT (not a string), so
+     *   the download file has nicely structured data.
+     * - Boundary/length tests use SHORT representative values (e.g. "a" for 1-char,
+     *   "invalid-email" for bad email) — NOT 255-char strings, because very long
+     *   strings inside JSON often cause models to produce malformed output.
+     * - Prompt is kept concise to reduce hallucination.
      */
     private String buildPrompt(ApiRequest request) {
-        String requestBodySection = (request.getRequestBody() != null && !request.getRequestBody().isBlank())
+        String sampleBody = (request.getRequestBody() != null && !request.getRequestBody().isBlank())
             ? request.getRequestBody()
-            : "No request body (e.g., GET request)";
+            : "{}";
 
         return """
-            You are a Senior QA Engineer.
-            Analyze the following REST API and generate comprehensive test cases.
+            You are a Senior QA Engineer. Generate test cases for the REST API below.
 
-            HTTP Method: %s
-            Endpoint: %s
-            Description: %s
-            Sample Request Body: %s
+            HTTP Method : %s
+            Endpoint    : %s
+            Description : %s
+            Sample Body : %s
 
-            Generate the following:
-            1. API Summary
-            2. Positive Test Cases (valid inputs, happy path)
-            3. Negative Test Cases (invalid inputs, wrong types, error scenarios)
-            4. Validation Test Cases (boundary values, empty fields, missing fields, null)
-            5. Expected HTTP Status Codes and Response Messages
+            Output ONLY a single, valid JSON object — no markdown, no code fences, no extra text.
 
-            STRICT RULES — follow all of these exactly:
-            - Return ONLY valid JSON. No explanation, no markdown, no code fences.
-            - Generate 4 to 6 test cases for each category.
-            - Every single test case MUST include a "requestBody" field.
-            - Each "requestBody" MUST be unique and exactly match what that specific test scenario requires:
-                * Positive tests: use complete, valid field values (realistic names, valid emails like john.doe@example.com).
-                * Negative tests: use wrong types, invalid email formats, unauthorized values, or completely wrong data.
-                * Validation tests: use boundary conditions — empty string "", null, missing fields (omit the key), a string of exactly 1 character, a string of exactly 255 characters, a string of exactly 256 characters (to test max-length boundary), or strings containing only spaces.
-            - Do NOT use the same "requestBody" object for more than one test case.
-            - Email values must be plain strings like john.doe@example.com — no Markdown, no angle brackets, no links.
-            - Do not generate code samples.
+            Rules:
+            1. Each test case must have: "title", "description", "expectedStatus", "requestBody".
+            2. "requestBody" must be a JSON object unique to that test case — matching exactly what that scenario tests:
+               - Positive  → complete valid data (real names, valid emails like alice@example.com).
+               - Negative  → invalid values (wrong types, bad email like "not-an-email", numeric where string needed).
+               - Validation→ edge cases: omit required fields, use empty string "", use null, use " " (spaces only).
+            3. Do NOT repeat the same requestBody in two test cases.
+            4. Generate 4 test cases per category (positive, negative, validation).
+            5. expectedStatus must be a short string like "200 OK" or "400 Bad Request".
 
-            Return the response in this exact JSON format:
+            JSON format to follow exactly:
             {
-              "summary": "",
+              "summary": "string",
               "positiveTests": [
-                { "title": "", "description": "", "expectedStatus": "", "requestBody": {} }
+                { "title": "string", "description": "string", "expectedStatus": "string", "requestBody": {} }
               ],
               "negativeTests": [
-                { "title": "", "description": "", "expectedStatus": "", "requestBody": {} }
+                { "title": "string", "description": "string", "expectedStatus": "string", "requestBody": {} }
               ],
               "validationTests": [
-                { "title": "", "description": "", "expectedStatus": "", "requestBody": {} }
+                { "title": "string", "description": "string", "expectedStatus": "string", "requestBody": {} }
               ],
               "expectedResponses": [
-                { "status": "", "message": "" }
+                { "status": "string", "message": "string" }
               ]
             }
             """.formatted(
                 request.getMethod().toUpperCase(),
                 request.getEndpoint(),
                 request.getDescription(),
-                requestBodySection
+                sampleBody
             );
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // Response Parser — bulletproof, never throws a user-facing error
+    // ─────────────────────────────────────────────────────────────────────────
+
     /**
-     * Parses the raw JSON string returned by Gemini into a TestCaseResponse DTO.
+     * Extracts and parses the JSON block from the AI's raw response.
      *
-     * Gemini is instructed to return only JSON, but sometimes it wraps the response
-     * in markdown code fences (```json ... ```). We clean that up before parsing.
+     * Three-step cleaning strategy:
+     * 1. Strip any markdown code fences (```json ... ``` or ``` ... ```).
+     * 2. Extract the outermost { ... } block using regex — handles cases where
+     *    the model prepends/appends text around the JSON.
+     * 3. Parse with a lenient ObjectMapper (ignores unknown fields).
      *
-     * Jackson's ObjectMapper converts the JSON string directly into our Java DTO class.
+     * If parsing still fails, a structured fallback response is returned so the
+     * user always sees something useful instead of an error page.
      */
-    private TestCaseResponse parseGeminiResponse(String rawResponse) {
+    private TestCaseResponse parseResponse(String rawResponse) {
+        if (rawResponse == null || rawResponse.isBlank()) {
+            return buildFallbackResponse("AI returned an empty response. Please try again.");
+        }
+
+        String cleaned = rawResponse.trim();
+
+        // Step 1 — strip markdown fences (handles ```json, ```JSON, ``` etc.)
+        cleaned = cleaned.replaceAll("(?s)^```[a-zA-Z]*\\s*", "").replaceAll("(?s)\\s*```$", "").trim();
+
+        // Step 2 — extract the outermost JSON object using regex
+        // This handles cases where the model adds text before or after the JSON
+        Pattern jsonPattern = Pattern.compile("(?s)\\{.*\\}");
+        Matcher matcher     = jsonPattern.matcher(cleaned);
+        if (matcher.find()) {
+            cleaned = matcher.group();
+        }
+
+        // Step 3 — parse with lenient ObjectMapper
         try {
-            // Remove markdown code fences if Gemini accidentally adds them
-            String cleaned = rawResponse.trim();
-            if (cleaned.startsWith("```")) {
-                cleaned = cleaned.replaceAll("^```(json)?\\s*", "").replaceAll("```\\s*$", "").trim();
+            return objectMapper.readValue(cleaned, TestCaseResponse.class);
+        } catch (Exception firstAttempt) {
+            // Step 4 — last resort: try to extract by finding first { and last }
+            try {
+                int start = cleaned.indexOf('{');
+                int end   = cleaned.lastIndexOf('}');
+                if (start >= 0 && end > start) {
+                    String extracted = cleaned.substring(start, end + 1);
+                    return objectMapper.readValue(extracted, TestCaseResponse.class);
+                }
+            } catch (Exception ignored) {
+                // Fall through to fallback
             }
 
-            // Use Jackson to deserialize the JSON string into our TestCaseResponse DTO
-            return objectMapper.readValue(cleaned, TestCaseResponse.class);
-
-        } catch (Exception ex) {
-            throw new GeminiException(
-                "Failed to parse AI response. The model may have returned an unexpected format. Please try again.",
-                ex
+            // If all parsing attempts fail, return a readable fallback
+            // so the user sees a result instead of a red error box
+            return buildFallbackResponse(
+                "The AI returned an unexpected format. Shown below is the raw output:\n\n" + rawResponse
             );
         }
+    }
+
+    /**
+     * Returns a structured fallback TestCaseResponse when parsing completely fails.
+     * This ensures the frontend always renders something instead of crashing.
+     */
+    private TestCaseResponse buildFallbackResponse(String message) {
+        TestCaseResponse fallback = new TestCaseResponse();
+        fallback.setSummary(message);
+        fallback.setPositiveTests(java.util.Collections.emptyList());
+        fallback.setNegativeTests(java.util.Collections.emptyList());
+        fallback.setValidationTests(java.util.Collections.emptyList());
+        fallback.setExpectedResponses(java.util.Collections.emptyList());
+        return fallback;
     }
 }
