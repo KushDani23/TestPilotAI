@@ -1,0 +1,11 @@
+# Exclude frontend languages from GitHub language statistics
+*.js linguist-detectable=false
+*.jsx linguist-detectable=false
+*.css linguist-detectable=false
+*.html linguist-detectable=false
+/frontend/src/** linguist-detectable=false
+/frontend/node_modules/** linguist-detectable=false
+*.json linguist-detectable= false
+
+# Keep Java detectable
+*.java linguist-detectable=true
