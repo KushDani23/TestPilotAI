@@ -1,239 +1,282 @@
 /* ============================================================
-   InputForm Component Styles
+   InputForm.css — Postman-style request panel
    ============================================================ */
 
-.input-form-container {
-  background: var(--bg-card);
+.postman-panel {
+  background: var(--bg-secondary);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-lg);
-  padding: var(--space-xl);
+  overflow: hidden;
 }
 
 /* ── URL Bar ─────────────────────────────────────────────────── */
 .url-bar {
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  padding: 10px 12px;
   gap: 0;
-  margin-bottom: var(--space-lg);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  transition: border-color var(--transition-fast);
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border-default);
 }
 
-.url-bar:focus-within {
-  border-color: var(--border-active);
-  box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.15);
-}
-
-.method-selector-wrapper {
-  flex-shrink: 0;
+/* Method dropdown */
+.method-wrapper {
   position: relative;
+  flex-shrink: 0;
 }
 
 .method-select {
-  height: 100%;
-  padding: 0 var(--space-md);
+  height: 36px;
+  padding: 0 28px 0 12px;
   border: none;
-  border-right: 1px solid var(--border-default);
-  border-radius: 0;
-  background: var(--bg-secondary);
+  background: transparent;
   font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 700;
   cursor: pointer;
   outline: none;
   -webkit-appearance: none;
   appearance: none;
-  padding-right: 28px;
-  min-width: 90px;
-  text-align: center;
+  letter-spacing: 0.5px;
 }
 
-/* Dropdown arrow */
-.method-selector-wrapper::after {
-  content: '▾';
+.method-arrow {
   position: absolute;
-  right: 8px;
+  right: 6px;
   top: 50%;
   transform: translateY(-50%);
   pointer-events: none;
-  font-size: 11px;
-  color: var(--text-secondary);
+  font-size: 9px;
+  color: var(--text-muted);
 }
 
-/* HTTP Method color coding */
-.method-get    { color: #3fb950; }
-.method-post   { color: #58a6ff; }
-.method-put    { color: #d29922; }
-.method-patch  { color: #bc8cff; }
-.method-delete { color: #f85149; }
+/* HTTP method colours */
+.method-get    { color: #28a745; }
+.method-post   { color: #4a90d9; }
+.method-put    { color: #f0ad4e; }
+.method-patch  { color: #9b7fe8; }
+.method-delete { color: #e05252; }
 
+.url-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--border-default);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+/* Endpoint input */
 .endpoint-input {
   flex: 1;
-  padding: 12px var(--space-md);
-  background: var(--bg-input);
+  height: 36px;
+  padding: 0 12px;
+  background: transparent;
   border: none;
   color: var(--text-primary);
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: 13px;
   outline: none;
 }
 
 .endpoint-input::placeholder {
   color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 12px;
 }
 
-/* ── Form Groups ─────────────────────────────────────────────── */
-.form-group {
-  margin-bottom: var(--space-lg);
+/* Send / Generate button */
+.send-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 20px;
+  background: var(--accent-orange);
+  border: none;
+  border-radius: var(--radius-md);
+  color: #ffffff;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--transition-fast), transform var(--transition-fast);
+  letter-spacing: 0.2px;
 }
 
-.form-label {
+.send-btn:hover:not(:disabled) {
+  background: #e85a28;
+  transform: translateY(-1px);
+}
+
+.send-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.send-btn:disabled,
+.send-btn--loading {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.send-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Tab Bar ─────────────────────────────────────────────────── */
+.tab-bar {
+  display: flex;
+  background: var(--bg-tab);
+  border-bottom: 1px solid var(--border-default);
+  padding: 0 12px;
+  gap: 0;
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+  margin-bottom: -1px;
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.tab-btn--active {
+  color: var(--accent-orange);
+  border-bottom-color: var(--accent-orange);
+}
+
+/* Orange dot indicator — shows field has content */
+.tab-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--accent-orange);
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── Tab Content ─────────────────────────────────────────────── */
+.tab-content {
+  background: var(--bg-secondary);
+}
+
+.tab-pane {
+  padding: var(--space-md);
+}
+
+.field-label {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 11px;
+  font-weight: 600;
   color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
   margin-bottom: var(--space-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
 }
 
-.required-badge {
+.badge-required {
   font-size: 10px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  color: var(--accent-blue);
-  background: rgba(88, 166, 255, 0.1);
-  border: 1px solid rgba(88, 166, 255, 0.3);
+  color: var(--accent-orange);
+  background: rgba(255, 108, 55, 0.12);
+  border: 1px solid rgba(255, 108, 55, 0.3);
   padding: 1px 6px;
-  border-radius: 10px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
-.optional-badge {
+.badge-optional {
   font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-hover);
   border: 1px solid var(--border-default);
   padding: 1px 6px;
-  border-radius: 10px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
 }
 
-.form-textarea {
+.body-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+}
+
+.body-format-hint {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  color: var(--accent-green);
+  background: rgba(40, 167, 69, 0.1);
+  border: 1px solid rgba(40, 167, 69, 0.25);
+  padding: 1px 7px;
+  border-radius: 3px;
+}
+
+.field-textarea {
   width: 100%;
-  padding: 12px var(--space-md);
+  padding: 10px 12px;
   background: var(--bg-input);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   color: var(--text-primary);
   font-family: var(--font-sans);
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.6;
   resize: vertical;
   outline: none;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  transition: border-color var(--transition-fast);
 }
 
-.form-textarea:focus {
-  border-color: var(--border-active);
-  box-shadow: 0 0 0 3px rgba(56, 139, 253, 0.15);
+.field-textarea:focus {
+  border-color: var(--accent-orange);
 }
 
-.form-textarea::placeholder {
-  color: var(--text-muted);
-}
+.field-textarea::placeholder { color: var(--text-muted); }
 
-.form-textarea--mono {
+.field-textarea--mono {
   font-family: var(--font-mono);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .field-hint {
-  margin-top: var(--space-xs);
-  font-size: 12px;
+  margin-top: 6px;
+  font-size: 11px;
   color: var(--text-muted);
 }
 
-/* ── Error Message ───────────────────────────────────────────── */
+/* ── Form Error ──────────────────────────────────────────────── */
 .form-error {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: 10px var(--space-md);
-  background: rgba(248, 81, 73, 0.1);
-  border: 1px solid rgba(248, 81, 73, 0.3);
-  border-radius: var(--radius-md);
+  padding: 9px var(--space-md);
+  background: rgba(224, 82, 82, 0.08);
+  border-top: 1px solid rgba(224, 82, 82, 0.3);
   color: var(--accent-red);
-  font-size: 13px;
-  margin-bottom: var(--space-md);
-}
-
-.error-icon {
-  font-size: 14px;
-  flex-shrink: 0;
-}
-
-/* ── Generate Button ─────────────────────────────────────────── */
-.generate-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-sm);
-  width: 100%;
-  padding: 14px var(--space-xl);
-  background: var(--gradient-brand);
-  border: none;
-  border-radius: var(--radius-md);
-  color: #ffffff;
-  font-family: var(--font-sans);
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
-  box-shadow: 0 4px 15px rgba(88, 166, 255, 0.25);
-  letter-spacing: 0.3px;
-}
-
-.generate-btn:hover:not(:disabled) {
-  opacity: 0.9;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(88, 166, 255, 0.35);
-}
-
-.generate-btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.generate-btn:disabled,
-.generate-btn--loading {
-  opacity: 0.65;
-  cursor: not-allowed;
-  transform: none;
-  box-shadow: none;
-}
-
-.btn-icon {
-  font-size: 14px;
-}
-
-/* ── Spinner ─────────────────────────────────────────────────── */
-.spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #ffffff;
-  border-radius: 50%;
-  animation: spin 0.75s linear infinite;
-  flex-shrink: 0;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
+  font-size: 12px;
 }

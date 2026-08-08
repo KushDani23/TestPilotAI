@@ -2,69 +2,67 @@ import React, { useState } from 'react'
 import './InputForm.css'
 
 /**
- * InputForm Component
+ * InputForm — Postman-inspired API input panel
  *
- * This component renders the input section of the application.
- * It collects the user's API details through a Postman-inspired form.
+ * Layout:
+ *   [METHOD ▾] [/endpoint          ] [Generate Test Cases →]
+ *   ─────────────────────────────────────────────────────────
+ *   [Description] [Body]    ← tabs
+ *   ─────────────────────────────────────────────────────────
+ *   <tab content>
  *
  * Props:
- * - onSubmit(formData): called when user clicks "Generate Test Cases"
- * - isLoading: boolean — disables the form while the API call is in progress
+ *   onSubmit(formData)  called when user submits
+ *   isLoading           disables the form while waiting
  */
 function InputForm({ onSubmit, isLoading }) {
-  // Local state for each form field
-  const [method, setMethod] = useState('POST')
-  const [endpoint, setEndpoint] = useState('')
+  const [method, setMethod]           = useState('POST')
+  const [endpoint, setEndpoint]       = useState('')
   const [description, setDescription] = useState('')
   const [requestBody, setRequestBody] = useState('')
-  const [formError, setFormError] = useState('')
+  const [activeTab, setActiveTab]     = useState('description') // 'description' | 'body'
+  const [formError, setFormError]     = useState('')
 
-  // HTTP methods available in the dropdown
   const httpMethods = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
 
-  // Color coding for HTTP method badges — standard REST convention
   const methodColors = {
-    GET: 'method-get',
-    POST: 'method-post',
-    PUT: 'method-put',
-    PATCH: 'method-patch',
+    GET:    'method-get',
+    POST:   'method-post',
+    PUT:    'method-put',
+    PATCH:  'method-patch',
     DELETE: 'method-delete',
   }
 
-  /**
-   * Handles form submission.
-   * Validates required fields before calling the parent's onSubmit.
-   */
   const handleSubmit = (e) => {
     e.preventDefault()
     setFormError('')
 
-    // Client-side validation
     if (!endpoint.trim()) {
-      setFormError('Please enter an API endpoint (e.g., /users)')
+      setFormError('Endpoint is required (e.g., /api/users)')
       return
     }
     if (!description.trim()) {
-      setFormError('Please enter a description for your API')
+      setFormError('Description is required')
       return
     }
 
-    // Pass the form data up to the parent component (App.jsx)
     onSubmit({
       method,
-      endpoint: endpoint.trim(),
+      endpoint:    endpoint.trim(),
       description: description.trim(),
       requestBody: requestBody.trim() || null,
     })
   }
 
   return (
-    <div className="input-form-container">
-      <form onSubmit={handleSubmit} noValidate>
+    <div className="postman-panel">
 
-        {/* ── URL Bar (Method + Endpoint) ───────────────────────────────── */}
+      {/* ── URL Bar ───────────────────────────────────────────── */}
+      <form onSubmit={handleSubmit} noValidate>
         <div className="url-bar">
-          <div className="method-selector-wrapper">
+
+          {/* Method dropdown */}
+          <div className="method-wrapper">
             <select
               id="http-method"
               className={`method-select ${methodColors[method]}`}
@@ -76,84 +74,113 @@ function InputForm({ onSubmit, isLoading }) {
                 <option key={m} value={m}>{m}</option>
               ))}
             </select>
+            <span className="method-arrow" aria-hidden="true">▾</span>
           </div>
 
+          <div className="url-divider" aria-hidden="true"></div>
+
+          {/* Endpoint */}
           <input
             id="api-endpoint"
             type="text"
             className="endpoint-input"
-            placeholder="/api/users"
+            placeholder="Enter request URL  (e.g. /api/users)"
             value={endpoint}
             onChange={(e) => setEndpoint(e.target.value)}
             disabled={isLoading}
             autoComplete="off"
             spellCheck="false"
           />
-        </div>
 
-        {/* ── API Description ───────────────────────────────────────────── */}
-        <div className="form-group">
-          <label htmlFor="api-description" className="form-label">
-            API Description
-            <span className="required-badge">required</span>
-          </label>
-          <textarea
-            id="api-description"
-            className="form-textarea"
-            placeholder="Describe what this API does. E.g., Creates a new user account with name and email."
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
+          {/* Send button */}
+          <button
+            id="generate-btn"
+            type="submit"
+            className={`send-btn ${isLoading ? 'send-btn--loading' : ''}`}
             disabled={isLoading}
-            rows={3}
-          />
+          >
+            {isLoading ? (
+              <>
+                <span className="send-spinner" aria-hidden="true"></span>
+                Generating…
+              </>
+            ) : (
+              'Generate'
+            )}
+          </button>
+
         </div>
 
-        {/* ── Request Body ──────────────────────────────────────────────── */}
-        <div className="form-group">
-          <label htmlFor="request-body" className="form-label">
-            Request Body
-            <span className="optional-badge">optional</span>
-          </label>
-          <textarea
-            id="request-body"
-            className="form-textarea form-textarea--mono"
-            placeholder={`{\n  "name": "John Doe",\n  "email": "john@example.com"\n}`}
-            value={requestBody}
-            onChange={(e) => setRequestBody(e.target.value)}
-            disabled={isLoading}
-            rows={6}
-            spellCheck="false"
-          />
-          <p className="field-hint">Paste your JSON request body here. Leave empty for GET requests.</p>
+        {/* ── Tab Bar ─────────────────────────────────────────── */}
+        <div className="tab-bar">
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === 'description' ? 'tab-btn--active' : ''}`}
+            onClick={() => setActiveTab('description')}
+          >
+            Description
+            {description && <span className="tab-dot" aria-hidden="true"></span>}
+          </button>
+          <button
+            type="button"
+            className={`tab-btn ${activeTab === 'body' ? 'tab-btn--active' : ''}`}
+            onClick={() => setActiveTab('body')}
+          >
+            Body
+            {requestBody && <span className="tab-dot" aria-hidden="true"></span>}
+          </button>
         </div>
 
-        {/* ── Validation Error ──────────────────────────────────────────── */}
+        {/* ── Tab Content ─────────────────────────────────────── */}
+        <div className="tab-content">
+
+          {activeTab === 'description' && (
+            <div className="tab-pane">
+              <label htmlFor="api-description" className="field-label">
+                API Description <span className="badge-required">required</span>
+              </label>
+              <textarea
+                id="api-description"
+                className="field-textarea"
+                placeholder="Describe what this API does.&#10;e.g. Creates a new user account with name and email fields."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                disabled={isLoading}
+                rows={5}
+              />
+            </div>
+          )}
+
+          {activeTab === 'body' && (
+            <div className="tab-pane">
+              <div className="body-header">
+                <label htmlFor="request-body" className="field-label">
+                  Request Body <span className="badge-optional">optional</span>
+                </label>
+                <span className="body-format-hint">JSON</span>
+              </div>
+              <textarea
+                id="request-body"
+                className="field-textarea field-textarea--mono"
+                placeholder={'{\n  "name": "John Doe",\n  "email": "john@example.com"\n}'}
+                value={requestBody}
+                onChange={(e) => setRequestBody(e.target.value)}
+                disabled={isLoading}
+                rows={7}
+                spellCheck="false"
+              />
+              <p className="field-hint">Leave empty for GET requests</p>
+            </div>
+          )}
+
+        </div>
+
+        {/* ── Validation Error ─────────────────────────────────── */}
         {formError && (
           <div className="form-error" role="alert">
-            <span className="error-icon">⚠</span>
-            {formError}
+            <span aria-hidden="true">⚠</span> {formError}
           </div>
         )}
-
-        {/* ── Submit Button ─────────────────────────────────────────────── */}
-        <button
-          id="generate-btn"
-          type="submit"
-          className={`generate-btn ${isLoading ? 'generate-btn--loading' : ''}`}
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <>
-              <span className="spinner" aria-hidden="true"></span>
-              Generating Test Cases...
-            </>
-          ) : (
-            <>
-              <span className="btn-icon" aria-hidden="true">✦</span>
-              Generate Test Cases
-            </>
-          )}
-        </button>
 
       </form>
     </div>

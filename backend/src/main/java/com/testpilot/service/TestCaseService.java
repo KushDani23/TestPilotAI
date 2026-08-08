@@ -72,32 +72,38 @@ public class TestCaseService {
             HTTP Method: %s
             Endpoint: %s
             Description: %s
-            Request Body: %s
+            Sample Request Body: %s
 
             Generate the following:
             1. API Summary
             2. Positive Test Cases (valid inputs, happy path)
-            3. Negative Test Cases (invalid inputs, error scenarios)
-            4. Validation Test Cases (boundary values, missing fields)
+            3. Negative Test Cases (invalid inputs, wrong types, error scenarios)
+            4. Validation Test Cases (boundary values, empty fields, missing fields, null)
             5. Expected HTTP Status Codes and Response Messages
 
-            Rules:
-            - Return ONLY valid JSON. No explanation, no markdown, no code blocks.
+            STRICT RULES — follow all of these exactly:
+            - Return ONLY valid JSON. No explanation, no markdown, no code fences.
             - Generate 4 to 6 test cases for each category.
-            - Keep descriptions concise and practical.
+            - Every single test case MUST include a "requestBody" field.
+            - Each "requestBody" MUST be unique and exactly match what that specific test scenario requires:
+                * Positive tests: use complete, valid field values (realistic names, valid emails like john.doe@example.com).
+                * Negative tests: use wrong types, invalid email formats, unauthorized values, or completely wrong data.
+                * Validation tests: use boundary conditions — empty string "", null, missing fields (omit the key), a string of exactly 1 character, a string of exactly 255 characters, a string of exactly 256 characters (to test max-length boundary), or strings containing only spaces.
+            - Do NOT use the same "requestBody" object for more than one test case.
+            - Email values must be plain strings like john.doe@example.com — no Markdown, no angle brackets, no links.
             - Do not generate code samples.
 
             Return the response in this exact JSON format:
             {
               "summary": "",
               "positiveTests": [
-                { "title": "", "description": "", "expectedStatus": "" }
+                { "title": "", "description": "", "expectedStatus": "", "requestBody": {} }
               ],
               "negativeTests": [
-                { "title": "", "description": "", "expectedStatus": "" }
+                { "title": "", "description": "", "expectedStatus": "", "requestBody": {} }
               ],
               "validationTests": [
-                { "title": "", "description": "", "expectedStatus": "" }
+                { "title": "", "description": "", "expectedStatus": "", "requestBody": {} }
               ],
               "expectedResponses": [
                 { "status": "", "message": "" }

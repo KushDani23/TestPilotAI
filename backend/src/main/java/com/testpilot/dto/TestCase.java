@@ -5,9 +5,12 @@ package com.testpilot.dto;
  *
  * Represents a single test case (positive, negative, or validation).
  * Each test case has:
- * - title: Short name of the test (e.g., "Valid User Registration")
- * - description: What the test is checking
+ * - title:          Short name of the test (e.g., "Valid User Registration")
+ * - description:    What the test is checking
  * - expectedStatus: The HTTP status code expected (e.g., "200 OK", "400 Bad Request")
+ * - requestBody:    The exact request body that triggers this specific test condition.
+ *                   Typed as Object so Jackson can deserialize it from either a JSON
+ *                   object ({"field":"value"}) or null from the AI response.
  */
 public class TestCase {
 
@@ -15,14 +18,20 @@ public class TestCase {
     private String description;
     private String expectedStatus;
 
+    // Per-test request body — each test case gets its own unique body
+    // that exactly matches the scenario being tested.
+    // Using Object so Jackson handles nested JSON objects from AI naturally.
+    private Object requestBody;
+
     // ── Constructors ──────────────────────────────────────────────────────────
 
     public TestCase() {}
 
-    public TestCase(String title, String description, String expectedStatus) {
+    public TestCase(String title, String description, String expectedStatus, Object requestBody) {
         this.title = title;
         this.description = description;
         this.expectedStatus = expectedStatus;
+        this.requestBody = requestBody;
     }
 
     // ── Getters and Setters ───────────────────────────────────────────────────
@@ -49,5 +58,13 @@ public class TestCase {
 
     public void setExpectedStatus(String expectedStatus) {
         this.expectedStatus = expectedStatus;
+    }
+
+    public Object getRequestBody() {
+        return requestBody;
+    }
+
+    public void setRequestBody(Object requestBody) {
+        this.requestBody = requestBody;
     }
 }
