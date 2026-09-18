@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import InputForm from './components/InputForm'
 import ResultSection from './components/ResultSection'
+import ApiKeyModal from './components/ApiKeyModal'
 import { generateTestCases } from './services/apiService'
 import './App.css'
 
@@ -9,11 +10,16 @@ import './App.css'
  *
  * Manages all application state and connects InputForm → API → ResultSection.
  * Stores the full request info so ResultSection can include it in the JSON download.
+ * Also manages the Groq API key entered by the user via the ApiKeyModal.
  */
 function App() {
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
+
+  // Groq API key state — entered by user, never hard-coded
+  const [groqApiKey, setGroqApiKey] = useState('')
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false)
 
   // Full request info saved so ResultSection can embed it in the JSON file
   const [lastRequest, setLastRequest] = useState({
@@ -23,7 +29,18 @@ function App() {
     requestBody: '',
   })
 
+  const handleApiKeySubmit = (key) => {
+    setGroqApiKey(key)
+    setShowApiKeyModal(false)
+  }
+
   const handleGenerate = async (formData) => {
+    // Require the user to set their API key before generating
+    if (!groqApiKey) {
+      setShowApiKeyModal(true)
+      return
+    }
+
     setIsLoading(true)
     setResult(null)
     setError(null)
@@ -35,7 +52,7 @@ function App() {
     })
 
     try {
-      const data = await generateTestCases(formData)
+      const data = await generateTestCases(formData, groqApiKey)
       setResult(data)
 
       setTimeout(() => {
@@ -60,7 +77,15 @@ function App() {
   return (
     <div className="app">
 
-      {/* ── Header ──────────────────────────────────────────── */}
+      {/* ── Groq API Key Modal ───────────────────────────────── */}
+      <ApiKeyModal
+        isOpen={showApiKeyModal}
+        currentKey={groqApiKey}
+        onSubmit={handleApiKeySubmit}
+        onClose={() => setShowApiKeyModal(false)}
+      />
+
+      {/* ── Header ──────────────────────────────────────────────────────── */}
       <header className="app-header">
         <div className="header-content">
           <div className="logo-group">
@@ -73,6 +98,16 @@ function App() {
             </div>
           </div>
           <div className="header-right">
+            {/* API Key button — shows status indicator when key is set */}
+            <button
+              id="set-api-key-btn"
+              className={`api-key-btn ${groqApiKey ? 'api-key-btn--set' : 'api-key-btn--unset'}`}
+              onClick={() => setShowApiKeyModal(true)}
+              title={groqApiKey ? 'Groq API Key is set — click to change' : 'Set your Groq API Key'}
+            >
+              <span className="api-key-btn-dot" aria-hidden="true"></span>
+              {groqApiKey ? 'API Key Set' : 'Set API Key'}
+            </button>
             <span className="header-version">v1.0</span>
           </div>
         </div>
@@ -81,6 +116,23 @@ function App() {
       {/* ── Main ────────────────────────────────────────────── */}
       <main className="app-main">
         <div className="container">
+
+          {/* No API key warning banner */}
+          {!groqApiKey && (
+            <div className="apikey-banner" role="alert">
+              <span className="apikey-banner-icon" aria-hidden="true">🔑</span>
+              <span className="apikey-banner-text">
+                Set your{' '}
+                <button
+                  className="apikey-banner-link"
+                  onClick={() => setShowApiKeyModal(true)}
+                >
+                  Groq API Key
+                </button>{' '}
+                to start generating test cases.
+              </span>
+            </div>
+          )}
 
           {/* Input Form */}
           <section aria-label="API Input">

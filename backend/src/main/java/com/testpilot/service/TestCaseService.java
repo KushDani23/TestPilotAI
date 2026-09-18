@@ -4,59 +4,34 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.testpilot.dto.ApiRequest;
 import com.testpilot.dto.TestCaseResponse;
-import com.testpilot.exception.GeminiException;
+import com.testpilot.exception.LLMException;
 import org.springframework.stereotype.Service;
 
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-/**
- * TestCaseService
- *
- * Business logic layer: builds the Groq prompt, calls GeminiService,
- * and parses the AI response into a TestCaseResponse DTO.
- */
 @Service
 public class TestCaseService {
 
-    private final GeminiService geminiService;
+    private final LLMService llmService;
 
-    // Lenient ObjectMapper — ignores unknown fields so new AI output fields
-    // never break parsing, and doesn't fail on nulls or empty values.
     private final ObjectMapper objectMapper;
 
-    public TestCaseService(GeminiService geminiService) {
-        this.geminiService = geminiService;
+    public TestCaseService(LLMService llmService) {
+        this.llmService = llmService;
         this.objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
             .configure(DeserializationFeature.FAIL_ON_NULL_FOR_PRIMITIVES, false)
             .configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true);
     }
 
-    /**
-     * Main entry point — orchestrates prompt → AI call → parse → return.
-     */
-    public TestCaseResponse generateTestCases(ApiRequest request) {
+    public TestCaseResponse generateTestCases(ApiRequest request, String groqApiKey) {
         String prompt      = buildPrompt(request);
-        String rawResponse = geminiService.generateContent(prompt);
+        String rawResponse = llmService.generateContent(prompt, groqApiKey);
         return parseResponse(rawResponse);
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Prompt Builder
-    // ─────────────────────────────────────────────────────────────────────────
 
-    /**
-     * Builds the structured Groq prompt.
-     *
-     * Key design decisions:
-     * - requestBody inside each test case is a JSON OBJECT (not a string), so
-     *   the download file has nicely structured data.
-     * - Boundary/length tests use SHORT representative values (e.g. "a" for 1-char,
-     *   "invalid-email" for bad email) — NOT 255-char strings, because very long
-     *   strings inside JSON often cause models to produce malformed output.
-     * - Prompt is kept concise to reduce hallucination.
-     */
     private String buildPrompt(ApiRequest request) {
         String sampleBody = (request.getRequestBody() != null && !request.getRequestBody().isBlank())
             ? request.getRequestBody()
@@ -106,22 +81,6 @@ public class TestCaseService {
             );
     }
 
-    // ─────────────────────────────────────────────────────────────────────────
-    // Response Parser — bulletproof, never throws a user-facing error
-    // ─────────────────────────────────────────────────────────────────────────
-
-    /**
-     * Extracts and parses the JSON block from the AI's raw response.
-     *
-     * Three-step cleaning strategy:
-     * 1. Strip any markdown code fences (```json ... ``` or ``` ... ```).
-     * 2. Extract the outermost { ... } block using regex — handles cases where
-     *    the model prepends/appends text around the JSON.
-     * 3. Parse with a lenient ObjectMapper (ignores unknown fields).
-     *
-     * If parsing still fails, a structured fallback response is returned so the
-     * user always sees something useful instead of an error page.
-     */
     private TestCaseResponse parseResponse(String rawResponse) {
         if (rawResponse == null || rawResponse.isBlank()) {
             return buildFallbackResponse("AI returned an empty response. Please try again.");
@@ -132,8 +91,7 @@ public class TestCaseService {
         // Step 1 — strip markdown fences (handles ```json, ```JSON, ``` etc.)
         cleaned = cleaned.replaceAll("(?s)^```[a-zA-Z]*\\s*", "").replaceAll("(?s)\\s*```$", "").trim();
 
-        // Step 2 — extract the outermost JSON object using regex
-        // This handles cases where the model adds text before or after the JSON
+        // Step 2 — extract the outermost JSON object using regex.This handles cases where the model adds text before or after the JSON
         Pattern jsonPattern = Pattern.compile("(?s)\\{.*\\}");
         Matcher matcher     = jsonPattern.matcher(cleaned);
         if (matcher.find()) {
@@ -156,18 +114,15 @@ public class TestCaseService {
                 // Fall through to fallback
             }
 
-            // If all parsing attempts fail, return a readable fallback
-            // so the user sees a result instead of a red error box
+            // If all parsing attempts fail, return a readable fallback, so the user sees a result instead of a red error box
             return buildFallbackResponse(
                 "The AI returned an unexpected format. Shown below is the raw output:\n\n" + rawResponse
             );
         }
     }
 
-    /**
-     * Returns a structured fallback TestCaseResponse when parsing completely fails.
-     * This ensures the frontend always renders something instead of crashing.
-     */
+    
+    //Returns a structured fallback TestCaseResponse when parsing completely fails
     private TestCaseResponse buildFallbackResponse(String message) {
         TestCaseResponse fallback = new TestCaseResponse();
         fallback.setSummary(message);

@@ -2,7 +2,7 @@
 
 **An AI-Powered REST API Test Case Generator**
 
-TestPilot AI is a full-stack web application designed to automate the creation of API test cases. By simply providing an HTTP method, endpoint, and a brief description, the application uses **Groq AI (Llama 3.1)** to instantly generate structured positive, negative, and validation test cases.
+TestPilot AI is a full-stack web application designed to automate the creation of API test cases. By simply providing an HTTP method, endpoint, and a brief description, the application uses an **LLM Service (Groq API — openai/gpt-oss-20b)** to instantly generate structured positive, negative, and validation test cases.
 
 This project was built to demonstrate backend API integration, prompt engineering, and clean, layered architecture in **Java & Spring Boot**.
 
@@ -13,7 +13,7 @@ This project was built to demonstrate backend API integration, prompt engineerin
 1. **AI Integration via RESTful APIs:** Instead of using bulky SDKs, the backend communicates directly with Groq's high-speed OpenAI-compatible REST API using Spring's `RestTemplate`.
 2. **Robust JSON Parsing Strategy:** Large Language Models (LLMs) can sometimes return unpredictable formats (like markdown code blocks). The backend uses a custom, multi-step parsing strategy (Regex + Jackson `ObjectMapper`) to guarantee the frontend never crashes due to bad AI output.
 3. **Prompt Engineering:** The AI is strictly instructed via a carefully designed system prompt to generate specific edge-cases (like 1-character boundaries, nulls, and empty fields) and output them in a strict JSON schema.
-4. **Clean Architecture:** The Java backend strictly follows a layered architecture (Controller → Service → API layer) using Data Transfer Objects (DTOs) to decouple the AI response from the client payload.
+4. **Clean Architecture:** The Java backend strictly follows a layered architecture (Controller → Service → LLM Service layer) using Data Transfer Objects (DTOs) to decouple the AI response from the client payload.
 
 ---
 
@@ -24,9 +24,9 @@ This project was built to demonstrate backend API integration, prompt engineerin
 graph TD
     Client[React Frontend] -->|JSON Request| Controller[TestCaseController]
     Controller -->|DTO| Service[TestCaseService]
-    Service -->|Prompt Builder| LLMService[Groq Service]
-    LLMService -->|REST API Call| Groq[Groq Llama 3.1]
-    Groq -->|Raw JSON Text| LLMService
+    Service -->|Prompt Builder| LLMService[LLMService]
+    LLMService -->|REST API Call| API[Groq API — openai/gpt-oss-20b]
+    API -->|Raw JSON Text| LLMService
     LLMService -->|Regex + Jackson Parse| Service
     Service -->|Structured DTO| Controller
     Controller -->|JSON Response| Client
@@ -39,8 +39,8 @@ SmartAPITester/
 │   ├── src/main/java/.../testpilot/
 │   │   ├── controller/       # Exposes REST endpoints to React
 │   │   ├── dto/              # Data Transfer Objects (Request/Response)
-│   │   ├── exception/        # Global Error Handling
-│   │   └── service/          # Business logic & AI Prompt Engineering
+│   │   ├── exception/        # Global Error Handling (LLMException)
+│   │   └── service/          # Business logic & AI Prompt Engineering (LLMService)
 │   └── src/main/resources/   # App Config & Environment Variables
 │
 └── frontend/                 # React UI Application
@@ -56,7 +56,7 @@ SmartAPITester/
 1. **The Request:** The user enters API details in the React frontend (Postman-inspired UI).
 2. **The Controller:** The React app sends a JSON payload to the Spring Boot `TestCaseController`.
 3. **The Prompt:** The `TestCaseService` takes the user data and injects it into a strict instruction prompt engineered for a Senior QA Engineer persona.
-4. **The AI Call:** The `GeminiService` (now powered by Groq) sends the prompt to the Groq LLM API.
+4. **The AI Call:** The `LLMService` sends the prompt to the Groq API (`openai/gpt-oss-20b`).
 5. **The Parsing:** The backend receives a raw text response, strips away any markdown artifacts, and safely deserializes the string into Java objects (`TestCaseResponse`).
 6. **The Result:** The frontend receives the clean JSON and displays it in a 3-column grid, allowing the user to download the final test suite.
 
@@ -68,7 +68,7 @@ SmartAPITester/
 * **Java 21**
 * **Spring Boot** (Web starter)
 * **Maven** (Dependency management)
-* **Groq API** (Llama 3.1 8B Instant Model)
+* **Groq API** (openai/gpt-oss-20b via OpenAI-compatible endpoint)
 * **Jackson** (JSON serialization/deserialization)
 
 ### Frontend (The UI)
