@@ -54,7 +54,7 @@ public class TestCaseService {
                - Negative  → invalid values (wrong types, bad email like "not-an-email", numeric where string needed).
                - Validation→ edge cases: omit required fields, use empty string "", use null, use " " (spaces only).
             3. Do NOT repeat the same requestBody in two test cases.
-            4. Generate 4 test cases per category (positive, negative, validation).
+            4. Generate 8 test cases per category (positive, negative, validation).
             5. expectedStatus must be a short string like "200 OK" or "400 Bad Request".
 
             JSON format to follow exactly:
