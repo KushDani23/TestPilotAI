@@ -1,4 +1,3 @@
-README.md
 # TestPilot AI 🚀
 
 **An AI-Powered REST API Test Case Generator**
@@ -22,35 +21,35 @@ TestPilot AI is a modern developer tool designed to automate exhaustive REST API
 ### 1. System Architecture Diagram
 
 ```mermaid
-graph TD
-    subgraph Client ["Frontend (React 18 + Vite)"]
+flowchart TD
+    subgraph Client["Frontend - React 18 & Vite"]
         UI["Postman-Style UI"]
-        Modal["API Key Modal (Session Storage)"]
+        Modal["API Key Modal - Session Storage"]
         AxiosClient["Axios HTTP Client"]
     end
 
-    subgraph Backend ["Backend (Spring Boot 4 + Spring AI)"]
-        Controller["TestCaseController (/api/testcases)"]
+    subgraph Backend["Backend - Spring Boot & Spring AI"]
+        Controller["TestCaseController - /api/testcases"]
         Validator["Jakarta Bean Validation"]
-        Service["TestCaseService (Prompt & Parser)"]
-        LLM["LLMService (Spring AI ChatClient)"]
-        SpringAI["OpenAiChatModel (Scoped per Request)"]
-        Parser["Jackson Streaming JsonParser + Sanitizer"]
+        Service["TestCaseService - Prompt & Parser"]
+        LLM["LLMService - Spring AI"]
+        SpringAI["OpenAiChatModel - Request Scoped"]
+        Parser["Jackson Streaming JsonParser"]
         GlobalEx["GlobalExceptionHandler"]
     end
 
-    subgraph Cloud ["Groq Cloud Inference"]
-        GroqAPI["Groq OpenAI-Compatible API (/v1/chat/completions)"]
+    subgraph Cloud["Groq Cloud Inference"]
+        GroqAPI["Groq OpenAI-Compatible API"]
         Model["openai/gpt-oss-20b"]
     end
 
-    UI -->|1. Submit Details & Key| AxiosClient
-    AxiosClient -->|2. POST /api/testcases/generate with X-Groq-Api-Key| Controller
+    UI -->|1. Submit Details and Key| AxiosClient
+    AxiosClient -->|2. POST /api/testcases/generate| Controller
     Controller -->|3. Validate Payload| Validator
     Validator -->|4. Valid Request| Service
     Service -->|5. Build QA Persona Prompt| LLM
     LLM -->|6. Build OpenAiChatModel with User Key| SpringAI
-    SpringAI -->|7. ChatClient.prompt().call()| GroqAPI
+    SpringAI -->|7. Execute Prompt via ChatClient| GroqAPI
     GroqAPI --> Model
     Model --> GroqAPI
     GroqAPI -->|8. Raw JSON Output| SpringAI
@@ -68,30 +67,30 @@ graph TD
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Dev as QA / Software Engineer
-    participant UI as React UI (InputForm)
-    participant API as Spring Boot (TestCaseController)
-    participant TC as TestCaseService
-    participant LLM as LLMService (Spring AI)
-    participant Groq as Groq Cloud (openai/gpt-oss-20b)
+    actor Dev as Developer / QA
+    participant UI as React Frontend
+    participant API as Spring Boot Controller
+    participant Service as TestCaseService
+    participant LLM as LLMService
+    participant Groq as Groq Cloud API
 
-    Dev->>UI: Enter HTTP Method, Endpoint, Description, Optional Body
-    Dev->>UI: Set Groq API Key via modal (stored in sessionStorage)
-    Dev->>UI: Click "Generate Test Cases"
-    UI->>API: POST /api/testcases/generate (Header: X-Groq-Api-Key)
-    API->>API: Validate @Valid annotations (@NotBlank)
-    API->>TC: generateTestCases(ApiRequest, apiKey)
-    TC->>TC: Construct strict QA Engineer prompt with JSON schema
-    TC->>LLM: generateContent(prompt, apiKey)
-    LLM->>LLM: Initialize per-request ClientOptions & OpenAiChatModel
-    LLM->>Groq: POST /v1/chat/completions (response_format: json_object, reasoning_effort: low)
-    Groq-->>LLM: Valid JSON Response
-    LLM-->>TC: Raw response text
-    TC->>TC: Strip code fences & pre-sanitize stray quotes/braces
-    TC->>TC: Stream-parse root object via Jackson JsonParser
-    TC-->>API: TestCaseResponse DTO
-    API-->>UI: 200 OK (TestCaseResponse JSON)
-    UI-->>Dev: Render 3-Column Cards (Positive, Negative, Validation) & Export JSON
+    Dev->>UI: Enter HTTP Method, Endpoint, Description, Body
+    Dev->>UI: Enter Groq API Key via Modal
+    Dev->>UI: Click Generate Test Cases
+    UI->>API: POST /api/testcases/generate with X-Groq-Api-Key
+    API->>API: Validate Request Payload
+    API->>Service: Call generateTestCases
+    Service->>Service: Construct QA prompt with JSON schema
+    Service->>LLM: Call generateContent with prompt and Key
+    LLM->>LLM: Build OpenAiChatModel with ClientOptions
+    LLM->>Groq: POST /v1/chat/completions with JSON mode
+    Groq-->>LLM: Return JSON response
+    LLM-->>Service: Return response string
+    Service->>Service: Clean markdown fences and sanitize
+    Service->>Service: Stream parse with Jackson JsonParser
+    Service-->>API: Return TestCaseResponse DTO
+    API-->>UI: Return 200 OK with TestCaseResponse
+    UI-->>Dev: Display 3-Column Cards and Download JSON
 ```
 
 ---
@@ -214,6 +213,10 @@ SmartAPITester/
 7. Click **"Generate Test Cases"** to view and download your full test suite.
 
 ---
+
+## 🔮 Live Demo
+🌐 **[Try TestPilot AI Live](https://test-pilot-ai-beryl.vercel.app/)**
+
 
 ## 🔮 Live Demo
 🌐 **[Try TestPilot AI Live](https://test-pilot-ai-beryl.vercel.app/)**
