@@ -27,16 +27,19 @@ public class LLMService {
     private Integer maxTokens;
 
     /**
-     * Calls the Groq API (OpenAI-compatible) via Spring AI's ChatClient to generate LLM content.
+     * Calls the Groq API (OpenAI-compatible) via Spring AI's ChatClient to generate
+     * LLM content.
      * The user-supplied API key is scoped per request and never stored.
      *
      * @param prompt     The engineered prompt to send to the model.
-     * @param groqApiKey The user-supplied Groq API key forwarded from the request header.
+     * @param groqApiKey The user-supplied Groq API key forwarded from the request
+     *                   header.
      * @return The raw text content returned by the LLM.
      */
     public String generateContent(String prompt, String groqApiKey) {
         try {
-            // Build per-request OpenAI client using user's API key, Groq base URL, and Spring AI HTTP client
+            // Build per-request OpenAI client using user's API key, Groq base URL, and
+            // Spring AI HTTP client
             ClientOptions clientOptions = ClientOptions.builder()
                     .baseUrl(groqBaseUrl)
                     .apiKey(groqApiKey)
@@ -45,12 +48,15 @@ public class LLMService {
 
             OpenAIClient openAiClient = new OpenAIClientImpl(clientOptions);
 
-            // Configure chat options with low reasoning effort to ensure tokens are dedicated to JSON output
+            // Configure chat options with low reasoning effort and JSON mode enforcement
             OpenAiChatOptions chatOptions = OpenAiChatOptions.builder()
                     .model(groqModel)
                     .temperature(temperature)
                     .maxTokens(maxTokens)
                     .reasoningEffort("low")
+                    .responseFormat(OpenAiChatModel.ResponseFormat.builder()
+                            .type(OpenAiChatModel.ResponseFormat.Type.JSON_OBJECT)
+                            .build())
                     .build();
 
             OpenAiChatModel chatModel = OpenAiChatModel.builder()
@@ -76,9 +82,9 @@ public class LLMService {
             throw ex;
         } catch (Exception ex) {
             throw new LLMException(
-                "Failed to communicate with LLM API. Please check your API key and try again. Details: " + ex.getMessage(),
-                ex
-            );
+                    "Failed to communicate with LLM API. Please check your API key and try again. Details: "
+                            + ex.getMessage(),
+                    ex);
         }
     }
 }

@@ -15,7 +15,7 @@
 
 * **Layered Clean Architecture:** Strict decoupling across REST controllers, domain DTOs, business orchestration, and AI inference services.
 * **Resilient AI Ingestion:** Built-in multi-tier regex and Jackson parsing fallback pipeline ensuring LLM formatting inconsistencies (such as markdown code fences or conversational preambles) never crash client interfaces.
-* **Zero Bloat & High Performance:** Direct communication with the **Groq API** (`openai/gpt-oss-20b`) via Spring's `RestTemplate` avoiding heavy external SDK dependencies. The UI uses pure React and modular Vanilla CSS designed with a dark Postman aesthetic.
+* **Modern Spring AI Integration:** Powered by **Spring AI 2.0** (`spring-ai-starter-model-openai`) using `ChatClient` and `OpenAiChatModel` connected to Groq Cloud (`openai/gpt-oss-20b`) with native JSON mode. The UI uses pure React and modular Vanilla CSS designed with a dark Postman aesthetic.
 
 ---
 
@@ -65,7 +65,7 @@ graph TD
         Service[TestCaseService]
         PromptBuilder[Prompt Builder Engine]
         JSONParser[Multi-Stage JSON & Fallback Parser]
-        LLM[LLMService - RestTemplate]
+        LLM[LLMService - Spring AI ChatClient]
         GlobalEx[GlobalExceptionHandler]
     end
 
@@ -170,7 +170,7 @@ SmartAPITester/
 │           │   │   ├── GlobalExceptionHandler.java  # ControllerAdvice for error mapping
 │           │   │   └── LLMException.java            # Custom unchecked exception for AI failures
 │           │   └── service/
-│           │       ├── LLMService.java              # Groq API client via RestTemplate
+│           │       ├── LLMService.java              # Groq inference client via Spring AI ChatClient
 │           │       └── TestCaseService.java         # Prompt engineering & multi-tier JSON parsing
 │           └── resources/
 │               └── application.properties           # Server port, Groq credentials, logging
@@ -303,20 +303,15 @@ Base path: `/api/testcases`
 
 ### 5.6 Groq Inference Service (`LLMService.java`)
 
-* Instantiates a Spring `RestTemplate` and Jackson `ObjectMapper`.
-* Constructs an OpenAI-compatible JSON payload:
-  ```json
-  {
-    "model": "openai/gpt-oss-20b",
-    "messages": [
-      { "role": "user", "content": "<engineered_prompt>" }
-    ],
-    "temperature": 0.7,
-    "max_tokens": 2048
-  }
-  ```
-* Sets `Authorization: Bearer ${GROQ_API_KEY}` and `Content-Type: application/json`.
-* Parses response tree to `choices[0].message.content`.
+* Uses **Spring AI 2.0** (`ChatClient` and `OpenAiChatModel`).
+* Instantiates a per-request `ClientOptions` configuring `baseUrl` (`https://api.groq.com/openai/v1`), the user-supplied `apiKey`, and `SpringAiOpenAiHttpClient`.
+* Builds a request-scoped `OpenAiChatModel` with:
+  * `model`: `openai/gpt-oss-20b`
+  * `temperature`: `0.7`
+  * `maxTokens`: `3500`
+  * `reasoningEffort`: `low`
+  * `responseFormat`: `ResponseFormat.Type.JSON_OBJECT` (enforcing strict JSON output)
+* Uses `ChatClient.create(chatModel).prompt().user(prompt).call().content()` to obtain content.
 * If empty or null, raises a descriptive `LLMException`.
 
 ### 5.7 Prompt Engineering & Parsing Engine (`TestCaseService.java`)
