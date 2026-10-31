@@ -114,5 +114,5 @@ npm run dev
 
 ---
 
-## 🔮 Future Enhancements
-* **Web Deployment:** Deploy the frontend and backend to the web so users can access the tool publicly without local setup.
+## 🔮 Live demo link:
+https://test-pilot-ai-beryl.vercel.app/

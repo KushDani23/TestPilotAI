@@ -1,5 +1,6 @@
 package com.testpilot.service;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.testpilot.dto.ApiRequest;
@@ -91,34 +92,54 @@ public class TestCaseService {
         // Step 1 — strip markdown fences (handles ```json, ```JSON, ``` etc.)
         cleaned = cleaned.replaceAll("(?s)^```[a-zA-Z]*\\s*", "").replaceAll("(?s)\\s*```$", "").trim();
 
-        // Step 2 — extract the outermost JSON object using regex.This handles cases where the model adds text before or after the JSON
-        Pattern jsonPattern = Pattern.compile("(?s)\\{.*\\}");
-        Matcher matcher     = jsonPattern.matcher(cleaned);
-        if (matcher.find()) {
-            cleaned = matcher.group();
+        // Step 2 — locate start of JSON
+        int firstBrace = cleaned.indexOf('{');
+        if (firstBrace >= 0) {
+            cleaned = cleaned.substring(firstBrace);
         }
 
-        // Step 3 — parse with lenient ObjectMapper
-        try {
-            return objectMapper.readValue(cleaned, TestCaseResponse.class);
+        // Step 3 — parse with streaming JsonParser: automatically stops at matching closing brace,
+        // safely ignoring trailing content or accidental extra closing braces
+        try (JsonParser parser = objectMapper.createParser(cleaned)) {
+            TestCaseResponse response = parser.readValueAs(TestCaseResponse.class);
+            if (response != null && response.getSummary() != null) {
+                return response;
+            }
         } catch (Exception firstAttempt) {
-            // Step 4 — last resort: try to extract by finding first { and last }
+            // Step 4 — sanitize common LLM array formatting slips (e.g. missing '{' between array objects)
             try {
-                int start = cleaned.indexOf('{');
-                int end   = cleaned.lastIndexOf('}');
-                if (start >= 0 && end > start) {
-                    String extracted = cleaned.substring(start, end + 1);
-                    return objectMapper.readValue(extracted, TestCaseResponse.class);
+                String repaired = cleaned
+                    .replaceAll("\\}\\s*,\\s*\"title\"", "},{\"title\"")
+                    .replaceAll("\\}\\s*,\\s*\"status\"", "},{\"status\"");
+                try (JsonParser parser = objectMapper.createParser(repaired)) {
+                    TestCaseResponse response = parser.readValueAs(TestCaseResponse.class);
+                    if (response != null && response.getSummary() != null) {
+                        return response;
+                    }
                 }
             } catch (Exception ignored) {
                 // Fall through to fallback
             }
 
-            // If all parsing attempts fail, return a readable fallback, so the user sees a result instead of a red error box
+            // Step 5 — fallback substring attempt
+            try {
+                int start = cleaned.indexOf('{');
+                int end   = cleaned.lastIndexOf('}');
+                if (start >= 0 && end > start) {
+                    return objectMapper.readValue(cleaned.substring(start, end + 1), TestCaseResponse.class);
+                }
+            } catch (Exception ignored) {
+            }
+
+            // If all parsing attempts fail, return a readable fallback
             return buildFallbackResponse(
                 "The AI returned an unexpected format. Shown below is the raw output:\n\n" + rawResponse
             );
         }
+
+        return buildFallbackResponse(
+            "The AI returned an unexpected format. Shown below is the raw output:\n\n" + rawResponse
+        );
     }
 
     
